@@ -1,0 +1,83 @@
+---
+title: "Calgary Crime Analysis"
+author: "Marc Boulet"
+date: "9/27/2017"
+output: 
+  html_document: 
+    theme: spacelab
+---
+
+```{r setup, include=FALSE, message=FALSE, error=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Calgary Crime Statistics
+
+We will perform a data analysis on the following dataset from the following website: http://www.calgary.ca/cps/Documents/statistical-reports/2017%20Community%20Crime%20Statistics.xls.
+
+
+The column names were changed in Excel to reflect a date in each column before being loaded into R.
+
+
+```{r dataload, message=FALSE,error=FALSE, cache=TRUE}
+library(readr)
+library(knitr)
+
+Crime_by_category <- read_csv("~/Dropbox/RStudio/CalgaryCrime/Data/2017 Community Crime Statistics by category.csv")
+kable(head(Crime_by_category))
+```
+
+## Data conditioning
+
+Replace NA values with zeroes and removed unused rows (Sept 2017 - December 2017).
+
+```{r NAreplacement, message=FALSE}
+library(knitr)
+library(dplyr)
+Crime_by_category[is.na(Crime_by_category)] <- 0
+Crime_by_category <- select(Crime_by_category, -SEP:-DEC)
+kable(head(Crime_by_category))
+```
+
+## Exploratory data analysis
+
+Plot total crime stats by category. First, add the total crime stats over the 2012-2017 time period.
+
+```{r Plotcat, fig.width=12, message=FALSE}
+library(ggplot2)
+Crime_by_category$total <- rowSums(Crime_by_category[,3:70])
+plot <- ggplot(Crime_by_category, aes(x=Category,y=total)) +
+        geom_bar(stat="identity") +
+        theme(axis.text.x = element_text(angle=90, hjust=1, vjust=.5))
+plot
+```
+
+Next plot total crime stats by community.
+
+```{r Plotcom, message=FALSE, fig.width=12}
+Crime_by_category$total <- rowSums(Crime_by_category[,3:70])
+plot <- ggplot(Crime_by_category, aes(x=Community,y=total, fill=Category)) +
+        geom_bar(stat="identity") +
+        theme(axis.text.x = element_text(angle=45, hjust=1, vjust=.5, size = 4))
+plot
+```
+
+Only plot total crime stats by community over 5000 incidents.
+
+```{r Plotcom2, message=FALSE, fig.width=12}
+library(knitr)
+library(ggplot2)
+Crime_by_category_high <- subset(Crime_by_category, total >2500)
+plot <- ggplot(Crime_by_category_high, aes(x=Community,y=total, fill=Category)) +
+        geom_bar(stat="identity") +
+        theme(axis.text.x = element_text(angle=45, hjust=1, vjust=.5, size = 6))
+plot
+
+# kable(Crime_by_category_high)
+```
+
+## To do
+
+1. Recast the data to a more suitable format, according to the tidy data methodology (http://vita.had.co.nz/papers/tidy-data.html)
+2. Load Census data to normalize absolute crime rates : http://www.calgary.ca/CA/city-clerks/Pages/Election-and-information-services/Civic-Census/2017-Results.aspx
+3. Georeference data to a map of the city of Calgary by integrating the work of Chel Hee Lee, as shown at the September 27th Calgary R User Group (CRUG) meeting. (http://people.ucalgary.ca/~chelhee.lee/pages/crug.html)
