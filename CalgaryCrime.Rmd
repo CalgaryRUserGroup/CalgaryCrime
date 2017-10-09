@@ -1,83 +1,159 @@
 ---
 title: "Calgary Crime Analysis"
-author: "Marc Boulet"
-date: "9/27/2017"
+author: "Marc Boulet & Calgary R User Group"
+date: "2017-10-11"
 output: 
   html_document: 
     theme: spacelab
 ---
 
-```{r setup, include=FALSE, message=FALSE, error=FALSE}
+```{r setup, include=FALSE, message=FALSE, error=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Calgary Crime Statistics
+## Calgary Crime Statistics - Summary
 
-We will perform a data analysis on the following dataset from the following website: http://www.calgary.ca/cps/Documents/statistical-reports/2017%20Community%20Crime%20Statistics.xls.
+We will perform a data analysis on the Calgary Crime Statistics dataset, retrieved from the following website: http://www.calgary.ca/cps/Documents/statistical-reports/2017%20Community%20Crime%20Statistics.xls.
 
 
-The column names were changed in Excel to reflect a date in each column before being loaded into R.
-
+A few changes were made in Excel before loading into R:  
+1. date column names were changed in Excel (collapsed two cells into one)  
+2. blank lines were removed  
 
 ```{r dataload, message=FALSE,error=FALSE, cache=TRUE}
-library(readr)
-library(knitr)
-
-Crime_by_category <- read_csv("~/Dropbox/RStudio/CalgaryCrime/Data/2017 Community Crime Statistics by category.csv")
-kable(head(Crime_by_category))
+library(readr) # needed to load .csv files
+CalgaryCrime <- read_csv("~/Dropbox/RStudio/CalgaryCrime/CalgaryCrime/2017 Community Crime Statistics by category.csv") # change URL to point to data
 ```
 
 ## Data conditioning
 
-Replace NA values with zeroes and removed unused rows (Sept 2017 - December 2017).
+Before exploring the data, certain data conditioning steps were taken:  
+1. Replace NA values with zeroes  
+2. removed unused columns (Sept 2017 - December 2017).  
 
 ```{r NAreplacement, message=FALSE}
-library(knitr)
+library(knitr) # used to display data using kable
+library(dplyr) # used to wrangle data
+CalgaryCrime[is.na(CalgaryCrime)] <- 0 # add zeroes to NA cells
+CalgaryCrime <- select(CalgaryCrime, -SEP:-DEC) # remove unused columns
+kable(head(CalgaryCrime)) # display resulting data
+```
+
+
+### Data wrangling using the Tidy Data methodology
+
+In a tidy data set:  
+1. Each **variable** is in a column.  
+2. Each **observation** is a row.  
+3. Each **value** is a cell.  
+
+*Arranging your data in this way makes it easier to work with because you have a consistent way of referring to variables (as column names) and observations (as row indices). When using tidy data and tidy tools, you spend less time worrying about how to feed the output from one function into the input of another, and more time answering your questions about the data.*
+
+```{r tidydata, message=FALSE}
+library(tidyr)
+CalgaryCrimeTidy <- CalgaryCrime %>% gather(Date, Cases, 3:70) # move data columns into one column
+kable(head(CalgaryCrimeTidy)) # display resulting data
+
+```
+
+### Add Calgary census data
+
+In order to perform more meaningful data analysis, the 2017 Civic Census Results, consisting of community populations from 2013-2017, were joined to the existing dataset. The raw data is located here: http://www.calgary.ca/CA/city-clerks/Documents/Election-and-information-services/Census2017/2017_Census_Results_Community_Tables.xlsx. 
+
+```{r censusdata, message=FALSE,error=FALSE, cache=TRUE}
 library(dplyr)
-Crime_by_category[is.na(Crime_by_category)] <- 0
-Crime_by_category <- select(Crime_by_category, -SEP:-DEC)
-kable(head(Crime_by_category))
+library(readr)
+library(knitr)
+
+CalgaryCensus <- read_csv("~/Dropbox/RStudio/CalgaryCrime/CalgaryCrime/2017_Census_Results_Community_Population.csv")
+CalgaryCensus$AvgPop <- rowMeans(subset(CalgaryCensus, select = c(2:6))) # calc 5 yr pop average 
+CalgaryData <- left_join(CalgaryCrimeTidy, CalgaryCensus, by = "Community") # add pop data to crime data
+kable(head(CalgaryData)) # display resulting data
 ```
 
 ## Exploratory data analysis
 
-Plot total crime stats by category. First, add the total crime stats over the 2012-2017 time period.
+We will generate a few plots to gain insight into the data.  
 
-```{r Plotcat, fig.width=12, message=FALSE}
-library(ggplot2)
-Crime_by_category$total <- rowSums(Crime_by_category[,3:70])
-plot <- ggplot(Crime_by_category, aes(x=Category,y=total)) +
-        geom_bar(stat="identity") +
-        theme(axis.text.x = element_text(angle=90, hjust=1, vjust=.5))
-plot
-```
+####Plot total crime stats by category  
 
-Next plot total crime stats by community.
-
-```{r Plotcom, message=FALSE, fig.width=12}
-Crime_by_category$total <- rowSums(Crime_by_category[,3:70])
-plot <- ggplot(Crime_by_category, aes(x=Community,y=total, fill=Category)) +
-        geom_bar(stat="identity") +
-        theme(axis.text.x = element_text(angle=45, hjust=1, vjust=.5, size = 4))
-plot
-```
-
-Only plot total crime stats by community over 5000 incidents.
-
-```{r Plotcom2, message=FALSE, fig.width=12}
+```{r plottotalcategories, fig.width=12}
 library(knitr)
 library(ggplot2)
-Crime_by_category_high <- subset(Crime_by_category, total >2500)
-plot <- ggplot(Crime_by_category_high, aes(x=Community,y=total, fill=Category)) +
-        geom_bar(stat="identity") +
-        theme(axis.text.x = element_text(angle=45, hjust=1, vjust=.5, size = 6))
-plot
+CatTotal <-   CalgaryData %>% 
+                group_by(Category) %>% 
+                summarise(TotalByCategory = sum(Cases)) %>%
+                arrange(desc(TotalByCategory))
 
-# kable(Crime_by_category_high)
+plot <- ggplot(CatTotal, aes(x=Category,y=TotalByCategory)) +
+        geom_bar(stat="identity", fill="blue") +
+        theme(axis.text.x = element_text(angle=45, hjust=1, size=10))
+plot
+```
+
+#### Plot total crime stats by community 
+
+```{r plottotalcases, fig.width=12, fig.height=8}
+library(knitr)
+library(ggplot2)
+CasesTotal <-   CalgaryData %>% 
+                group_by(Community) %>% 
+                summarise(TotalByCommunity = sum(Cases)) %>%
+                arrange(desc(TotalByCommunity))
+
+plot <- ggplot(CasesTotal[1:25,], aes(x=reorder(Community, TotalByCommunity), y=TotalByCommunity)) +
+        geom_bar(stat="identity", fill="red") +
+        theme(axis.text.y = element_text(size=12)) +
+        geom_text(aes(label=TotalByCommunity), hjust=1.2, size=5, colour="white") +
+        coord_flip()
+plot
+```
+
+#### Normalize total crime stats by population  
+
+Next, we'll normalize the data according to average population in each community:
+
+```{r normalize, fig.width=12, message=FALSE}
+
+CasesTotal <- left_join(CasesTotal, CalgaryCensus, by = "Community")
+CasesTotal$Per100 <- CasesTotal$TotalByCommunity / CasesTotal$AvgPop * 100
+kable(head(CasesTotal, 15))
+```
+
+#### Outliers
+
+However, there are a number of outliers that occur:  
+1. data with NA values (missing population data)  
+2. data with zero values (zero population data)    
+3. data with exceptionally high normalized values (due to high crime rate & low average population, eg. industrial parks)  
+
+```{r outliers}
+Outliers <- CasesTotal %>% 
+            filter(!complete.cases(Per100) | Per100 =="Inf" | Per100 > 500)
+kable(head(Outliers, 10))
+```
+
+#### Plot total crime stats by population (removing outliers)
+
+```{r plotnormalisedtotals, fig.width=12,fig.height=8, message=FALSE}
+library(ggplot2)
+
+CasesTotalClean <-  CasesTotal %>% 
+                    filter(complete.cases(Per100) & Per100 != "Inf" & Per100 < 500 & AvgPop > 500) %>%
+                    arrange(desc(Per100))
+
+plot <- ggplot(CasesTotalClean[1:25,], aes(x=reorder(Community, Per100), y=Per100)) +
+        geom_bar(stat="identity", fill = "darkblue") +
+        theme(axis.text.y = element_text(size=12)) +
+        geom_text(aes(label= round(Per100)), hjust=1.2, size=5, colour="white") +
+        geom_text(aes(label=round(AvgPop)), hjust=-0.2) +
+        coord_flip()
+plot
+kable(head(CasesTotalClean,25))
 ```
 
 ## To do
-
-1. Recast the data to a more suitable format, according to the tidy data methodology (http://vita.had.co.nz/papers/tidy-data.html)
-2. Load Census data to normalize absolute crime rates : http://www.calgary.ca/CA/city-clerks/Pages/Election-and-information-services/Civic-Census/2017-Results.aspx
-3. Georeference data to a map of the city of Calgary by integrating the work of Chel Hee Lee, as shown at the September 27th Calgary R User Group (CRUG) meeting. (http://people.ucalgary.ca/~chelhee.lee/pages/crug.html)
+1. Recast the data to a more analysis-friendly format, according to the tidy data methodology (http://vita.had.co.nz/papers/tidy-data.html) **DONE**  
+2. Load Census data to normalize absolute crime rates: http://www.calgary.ca/CA/city-clerks/Pages/Election-and-information-services/Civic-Census/2017-Results.aspx **DONE**   
+3. Georeference data to a map of the city of Calgary by integrating the work of Chel Hee Lee, as shown at the September 27th Calgary R User Group (CRUG) meeting. (http://people.ucalgary.ca/~chelhee.lee/pages/crug.html) 
+4. Interactive comparisons between communities, categories, years, etc.
