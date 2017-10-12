@@ -40,8 +40,8 @@ kable(head(CalgaryCrime)) # display resulting data
 ```
 
 
-### Data wrangling using the Tidy Data methodology
-
+### Data wrangling using the Tidy Data methodology  
+http://vita.had.co.nz/papers/tidy-data.html  
 In a tidy data set:  
 1. Each **variable** is in a column.  
 2. Each **observation** is a row.  
@@ -52,6 +52,7 @@ In a tidy data set:
 ```{r tidydata, message=FALSE}
 library(tidyr)
 CalgaryCrimeTidy <- CalgaryCrime %>% gather(Date, Cases, 3:70) # move data columns into one column
+CalgaryCrimeTidy$Date <- as.Date(CalgaryCrimeTidy$Date, format = "%m/%d/%Y") # convert Date column to date format
 kable(head(CalgaryCrimeTidy)) # display resulting data
 
 ```
@@ -152,8 +153,62 @@ plot
 kable(head(CasesTotalClean,25))
 ```
 
-## To do
+
+## Community investigation
+
+Compare the total crime counts, by category, of one community to another community. The mean crime counts are also included. To compare other communities, just change the values for Comm1 and Comm2 (make sure the communities are in upper case).
+
+```{r communitycompare, message=FALSE,error=FALSE, warning=FALSE, fig.height=15, fig.width=12}
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+
+CalgaryData$Date <- as.Date(CalgaryData$Date, format = "%m/%d/%Y")
+
+Comm1 <- "SUNNYSIDE" # enter 1st community
+Comm2 <- "BANFF TRAIL" # enter 2nd community
+
+CommCat <-  CalgaryData %>% 
+            filter(Community == Comm1) %>%
+            group_by(Category, year(Date)) %>%
+            summarise(sum(Cases))
+
+CommCat2 <-  CalgaryData %>% 
+            filter(Community == Comm2) %>%
+            group_by(Category, year(Date)) %>%
+            summarise(sum(Cases))
+
+MeanCat <-  CalgaryData %>% 
+            filter(complete.cases(AvgPop) & AvgPop != "Inf" & AvgPop > 500) %>%
+            group_by(Category, year(Date)) %>%
+            summarise(mean(Cases))
+MeanCat$`mean(Cases)` <- MeanCat$`mean(Cases)` * 12 # convert data from monthly to yearly averages
+
+TotalCat <- merge(CommCat ,CommCat2,by=c("Category","year(Date)")) # merge Community 1 and 2 together
+TotalCat <- merge(TotalCat, MeanCat, by=c("Category","year(Date)")) # merge mean data
+
+CommPlot <- ggplot(TotalCat, aes(x=`year(Date)`)) + 
+            geom_line(aes(y=`mean(Cases)`, colour = "Average")) +
+            geom_line(aes(y=`sum(Cases).x`, colour = Comm1)) +
+            geom_line(aes(y=`sum(Cases).y`, colour = Comm2)) +
+            geom_point(aes(y=`mean(Cases)`)) +
+            geom_point(aes(y=`sum(Cases).x`)) +
+            geom_point(aes(y=`sum(Cases).y`)) +
+            facet_wrap(~ Category, ncol=2 ) +
+            scale_y_log10() +
+            scale_colour_manual(values=c("black", "red", "blue")) +
+            theme_bw() + 
+            theme(legend.position="top", legend.text=element_text(size=20),
+                    strip.text = element_text(face="bold", size=rel(1.5)),
+                    strip.background = element_rect(fill="lightblue", colour="black", size=1))
+CommPlot
+```
+  
+## To do List
 1. Recast the data to a more analysis-friendly format, according to the tidy data methodology (http://vita.had.co.nz/papers/tidy-data.html) **DONE**  
 2. Load Census data to normalize absolute crime rates: http://www.calgary.ca/CA/city-clerks/Pages/Election-and-information-services/Civic-Census/2017-Results.aspx **DONE**   
 3. Georeference data to a map of the city of Calgary by integrating the work of Chel Hee Lee, as shown at the September 27th Calgary R User Group (CRUG) meeting. (http://people.ucalgary.ca/~chelhee.lee/pages/crug.html) 
-4. Interactive comparisons between communities, categories, years, etc.
+4. Interactive comparisons between communities, categories, years, etc. (similar to https://sharcz.shinyapps.io/financialforecastingtool/)
+5. Model potential crime predictors (population size, aerial size, proximity to certain downtown, industrial parks, etc.)
+6. **NOTE**: If you're interested in setting up a cloud version of RStudio using AWS, click on this link: http://strimas.com/r/rstudio-cloud-1/
+
