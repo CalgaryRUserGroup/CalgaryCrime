@@ -1,14 +1,17 @@
 ---
 title: "Calgary Crime Analysis"
 author: "Marc Boulet & Calgary R User Group"
-date: "2017-10-11"
+date: "2017-10-17"
 output: 
   html_document: 
     theme: spacelab
 ---
 
-```{r setup, include=FALSE, message=FALSE, error=FALSE, warning=FALSE}
+```{r setup, message=FALSE, error=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(knitr)
+library(ggplot2)
 ```
 
 ## Calgary Crime Statistics - Summary
@@ -20,7 +23,7 @@ A few changes were made in Excel before loading into R:
 1. date column names were changed in Excel (collapsed two cells into one)  
 2. blank lines were removed  
 
-```{r dataload, message=FALSE,error=FALSE, cache=TRUE}
+```{r dataload, error=FALSE, message=FALSE, cache=TRUE}
 library(readr) # needed to load .csv files
 CalgaryCrime <- read_csv("~/Dropbox/RStudio/CalgaryCrime/CalgaryCrime/2017 Community Crime Statistics by category.csv") # change URL to point to data
 ```
@@ -51,6 +54,7 @@ In a tidy data set:
 
 ```{r tidydata, message=FALSE}
 library(tidyr)
+library(knitr)
 CalgaryCrimeTidy <- CalgaryCrime %>% gather(Date, Cases, 3:70) # move data columns into one column
 CalgaryCrimeTidy$Date <- as.Date(CalgaryCrimeTidy$Date, format = "%m/%d/%Y") # convert Date column to date format
 kable(head(CalgaryCrimeTidy)) # display resulting data
@@ -61,7 +65,7 @@ kable(head(CalgaryCrimeTidy)) # display resulting data
 
 In order to perform more meaningful data analysis, the 2017 Civic Census Results, consisting of community populations from 2013-2017, were joined to the existing dataset. The raw data is located here: http://www.calgary.ca/CA/city-clerks/Documents/Election-and-information-services/Census2017/2017_Census_Results_Community_Tables.xlsx. 
 
-```{r censusdata, message=FALSE,error=FALSE, cache=TRUE}
+```{r censusdata, error=FALSE, message=FALSE, cache=FALSE}
 library(dplyr)
 library(readr)
 library(knitr)
@@ -81,6 +85,7 @@ We will generate a few plots to gain insight into the data.
 ```{r plottotalcategories, fig.width=12}
 library(knitr)
 library(ggplot2)
+library(dplyr)
 CatTotal <-   CalgaryData %>% 
                 group_by(Category) %>% 
                 summarise(TotalByCategory = sum(Cases)) %>%
@@ -94,9 +99,10 @@ plot
 
 #### Plot total crime stats by community 
 
-```{r plottotalcases, fig.width=12, fig.height=8}
+```{r plottotalcases, fig.height=8, fig.width=12}
 library(knitr)
 library(ggplot2)
+library(dplyr)
 CasesTotal <-   CalgaryData %>% 
                 group_by(Community) %>% 
                 summarise(TotalByCommunity = sum(Cases)) %>%
@@ -136,7 +142,7 @@ kable(head(Outliers, 10))
 
 #### Plot total crime stats by population (removing outliers)
 
-```{r plotnormalisedtotals, fig.width=12,fig.height=8, message=FALSE}
+```{r plotnormalisedtotals, fig.height=12, fig.width=12, message=FALSE}
 library(ggplot2)
 
 CasesTotalClean <-  CasesTotal %>% 
@@ -153,19 +159,18 @@ plot
 kable(head(CasesTotalClean,25))
 ```
 
-
 ## Community investigation
 
 Compare the total crime counts, by category, of one community to another community. The mean crime counts are also included. To compare other communities, just change the values for Comm1 and Comm2 (make sure the communities are in upper case).
 
-```{r communitycompare, message=FALSE,error=FALSE, warning=FALSE, fig.height=15, fig.width=12}
+```{r communitycompare, error=FALSE, fig.height=15, fig.width=12, message=FALSE, warning=FALSE}
 library(dplyr)
 library(ggplot2)
 library(lubridate)
 
 CalgaryData$Date <- as.Date(CalgaryData$Date, format = "%m/%d/%Y")
 
-Comm1 <- "SUNNYSIDE" # enter 1st community
+Comm1 <- "BRIDGELAND/RIVERSIDE" # enter 1st community
 Comm2 <- "BANFF TRAIL" # enter 2nd community
 
 CommCat <-  CalgaryData %>% 
@@ -203,12 +208,75 @@ CommPlot <- ggplot(TotalCat, aes(x=`year(Date)`)) +
                     strip.background = element_rect(fill="lightblue", colour="black", size=1))
 CommPlot
 ```
-  
-## To do List
-1. Recast the data to a more analysis-friendly format, according to the tidy data methodology (http://vita.had.co.nz/papers/tidy-data.html) **DONE**  
-2. Load Census data to normalize absolute crime rates: http://www.calgary.ca/CA/city-clerks/Pages/Election-and-information-services/Civic-Census/2017-Results.aspx **DONE**   
-3. Georeference data to a map of the city of Calgary by integrating the work of Chel Hee Lee, as shown at the September 27th Calgary R User Group (CRUG) meeting. (http://people.ucalgary.ca/~chelhee.lee/pages/crug.html) 
-4. Interactive comparisons between communities, categories, years, etc. (similar to https://sharcz.shinyapps.io/financialforecastingtool/)
-5. Model potential crime predictors (population size, aerial size, proximity to certain downtown, industrial parks, etc.)
-6. **NOTE**: If you're interested in setting up a cloud version of RStudio using AWS, click on this link: http://strimas.com/r/rstudio-cloud-1/
 
+
+### Interactive map  
+
+Load the Calgary communities shapefile and merge the crime stats to the shape file dataframe.
+
+```{r shapefile, cache=TRUE, message=FALSE, warning=FALSE, error=FALSE}
+
+# load shapefile data (thanks Chel!)
+download.file(url="https://data.calgary.ca/api/geospatial/ab7m-fwn6?method=export&format=Shapefile", 
+              destfile="~/community_boundary.zip", method="wget")
+unzip(zipfil="~/community_boundary.zip", exdir="~/")
+flist <- list.files("~/")
+fname <- flist[grep(".shp", flist)]
+cb <- maptools::readShapePoly(file.path("~/", fname))
+
+# merge crime stats to shapefile dataframe (cb@data)
+colnames(cb@data)[5] <- "Community" # rename column to match crime stats dataframe
+cb.df <- left_join(cb@data, CasesTotal, by = "Community") # add pop data to crime data
+
+```
+
+This is an interactive map to show the total and normalized crime stats overlaid on all the communities. There is also a heat map indicating the areas of highest crime, normalized by population.
+
+
+```{r generatemap, echo=TRUE, message=FALSE, warning=FALSE}
+library(leaflet)
+
+# make map labels
+labels <-   sprintf("<strong>%s</strong><br/> Community structure: %s<br/>
+                    Class: %s <br/> Population: %s <br/>
+                    Total crime: %s, Per 100 people: %s",
+                    cb.df$Community, cb@data$comm_struc, 
+                    cb@data$class, cb.df$AvgPop, 
+                    cb.df$TotalByCommunity, round(cb.df$Per100)) %>%
+            lapply(htmltools::HTML)
+
+# code to generate cloropleth (heat) colour palette
+bins <- c(0, 50, 100, 200, 300, 400, 500)
+pal <- colorBin("Reds", domain = round(cb.df$Per100), bins = bins)
+
+# generate map using leaflet
+leaflet(width="100%", height = 1000)  %>% 
+    addTiles() %>% 
+    setView(lng = -114.062019, lat=51.044270,zoom=11) %>% 
+    addPolygons(data=cb,weight=2,col = 'blue', fillOpacity = 0) %>%
+    addPolygons(data = cb, fillColor = ~pal(round(cb.df$Per100)),
+        weight = 2,
+        dashArray = "3",
+        fillOpacity = 0.7,
+        highlight = highlightOptions(
+                    weight = 10,
+                    color = "#666",
+                    dashArray = "",
+                    fillOpacity = 0,
+                    bringToFront = TRUE),
+        label = labels,
+                labelOptions = labelOptions(
+                style = list("font-weight" = "normal", padding = "3px 8px"),
+                textsize = "15px",
+                direction = "auto"))
+```
+ 
+## To do List
+* Rewrite the *dataload* module to automate loading the Excel data from the Calgary Crime site.
+* Recast the data to a more analysis-friendly format, according to the tidy data methodology (http://vita.had.co.nz/papers/tidy-data.html) **DONE**  
+* Load Census data to normalize absolute crime rates: http://www.calgary.ca/CA/city-clerks/Pages/Election-and-information-services/Civic-Census/2017-Results.aspx **DONE**   
+* Georeference data to a map of the city of Calgary by integrating the work of Chel Hee Lee, as shown at the September 27th Calgary R User Group (CRUG) meeting.  (http://people.ucalgary.ca/~chelhee.lee/pages/crug.html) 
+    - dplyr join crime data to shapefile dataframe (cb@data) **DONE**
+    - cloropleth for crime values (http://rstudio.github.io/leaflet/choropleths.html) **DONE** 
+* Write Shiny app to allow interactive comparisons between communities, categories, years, etc.
+* Investigate potential crime predictors (population size, aerial size, proximity to certain downtown, industrial parks, etc.)
