@@ -25,7 +25,7 @@ A few changes were made in Excel before loading into R:
 
 ```{r dataload, error=FALSE, message=FALSE, cache=TRUE}
 library(readr) # needed to load .csv files
-CalgaryCrime <- read_csv("~/Dropbox/RStudio/CalgaryCrime/CalgaryCrime/2017 Community Crime Statistics by category.csv") # change URL to point to data
+CalgaryCrime <- read_csv(url("https://raw.githubusercontent.com/CalgaryRUserGroup/CalgaryCrime/master/2017%20Community%20Crime%20Statistics%20by%20category.csv")) # change URL to point to data
 ```
 
 ## Data conditioning
