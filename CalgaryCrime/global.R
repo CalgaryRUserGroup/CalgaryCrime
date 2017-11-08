@@ -1,18 +1,24 @@
-#vector of required packages
-require.packages <- c('readr', 'dplyr', 'tidyr', 'lubridate', 'ggplot2', 'dygraphs', 'rgdal', 'leaflet')
-
-#load all the packages using lapply
-lapply(require.packages, require, character.only = TRUE)
+# import all the packages that will be used throughout the file
+library('readr')
+library('dplyr')
+library('tidyr')
+library('lubridate')
+library('ggplot2')
+library('dygraphs')
+library('rgdal')
+library('leaflet')
+library('shiny')
+library('shinydashboard')
 
 
 ######################################################################################################
 ### Load data, clean and produce various charts
 
 #load community crime by category csv directly from the github repository
-CalgaryCrime <- read_csv("data/crime2017.csv", na = c("", "NA"), trim_ws = TRUE) # replace blank cells and NA strings with NA character type
+CalgaryCrime <- read_csv("www/crime2017.csv", na = c("", "NA"), trim_ws = TRUE) # replace blank cells and NA strings with NA character type
 
 #load community census results csv directly from the github repository
-CalgaryCensus <- read_csv("data/census2017.csv", na = c("", "NA"), trim_ws = TRUE) # replace blank cells and NA strings with NA character type
+CalgaryCensus <- read_csv("www/census2017.csv", na = c("", "NA"), trim_ws = TRUE) # replace blank cells and NA strings with NA character type
 
 #Just two place holders to keep the raw data frames so that I dont have to read them again and again
 CalgaryCrime.raw <-CalgaryCrime
@@ -66,7 +72,6 @@ Crime.Cat.Total <-   CalgaryData %>%
 Crime.Cat.Total.Plot <- ggplot(Crime.Cat.Total, aes(x=Category,y=CrimeCategoryTotal)) +
   geom_bar(stat="identity", fill="blue") +
   theme(axis.text.x = element_text(angle=45, hjust=1, size=10))
-Crime.Cat.Total.Plot
 
 
 #### Plot total crime stats by community 
@@ -82,8 +87,6 @@ Crime.Community.Total.Plot <- ggplot(Crime.Community.Total[1:25,], aes(x=reorder
   theme(axis.text.y = element_text(size=12)) +
   geom_text(aes(label=CrimeCommunityTotal), hjust=1.2, size=5, colour="white") +
   coord_flip()
-Crime.Community.Total.Plot
-
 
 #### Normalize total crime stats by population 
 Crime.Community.Total <- left_join(Crime.Community.Total, CalgaryCensus, by = "Community")
@@ -97,7 +100,6 @@ Crime.Community.Total.Outliers <- Crime.Community.Total %>%
 Crime.Community.Total.Clean <-  Crime.Community.Total %>% 
   filter(complete.cases(Per100) & Per100 != "Inf" & Per100 < 500 & AvgPop > 500) %>%
   arrange(desc(Per100))
-print(Crime.Community.Total.Clean)
 
 Crime.Community.Total.Clean.Plot <- ggplot(Crime.Community.Total.Clean[1:25,], aes(x=reorder(Community, Per100), y=Per100)) +
   geom_bar(stat="identity", fill = "darkblue") +
@@ -105,7 +107,6 @@ Crime.Community.Total.Clean.Plot <- ggplot(Crime.Community.Total.Clean[1:25,], a
   geom_text(aes(label= round(Per100)), hjust=1.2, size=5, colour="white") +
   geom_text(aes(label=round(AvgPop)), hjust=-0.2) +
   coord_flip()
-Crime.Community.Total.Clean.Plot
 
 
 ## Community investigation
@@ -153,13 +154,11 @@ CommPlot <- ggplot(TotalCat, aes(x=`year(Date)`)) +
   theme(legend.position="top", legend.text=element_text(size=20),
         strip.text = element_text(face="bold", size=rel(1.5)),
         strip.background = element_rect(fill="lightblue", colour="black", size=1))
-CommPlot
-
 
 
 ### Interactive map  
 #Load the Calgary communities shapefile and merge the crime stats to the shape file dataframe.
-shapefile.folder <- "./data/community_boundaries"
+shapefile.folder <- "./www/community_boundaries"
 cb <- readOGR(dsn=shapefile.folder)
 
 
