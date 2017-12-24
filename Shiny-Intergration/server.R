@@ -4,7 +4,7 @@ shinyServer(function(input, output,session) {
   
   #build the base state
   setBaseSate(session)
-  selectedValues <- reactiveValues(selectedCommunity = "",selectedCrime = "")
+  selectedValues <- reactiveValues(selectedCommunity = "",selectedCrime = "", selectedDate = "")
   if(!exists("calgaryMap")){
     calgaryMap = buildMap()
     mapProxy <- leafletProxy("calgaryMap")
@@ -28,27 +28,22 @@ shinyServer(function(input, output,session) {
     }
     
   })
-  
- #Renders the map
-   output$calgaryMap <- renderLeaflet({
-    calgaryMap
-  })
-   
-  output$totalCrimeByRegion <- renderText({
-    if(selectedValues$selectedCommunity != ""){
-      value <- selectedValues$selectedCommunity
-      
-      output <-  CasesTotal[Community == value,TotalByCommunity]
-      
-    }else{
-     output <- ""
+  # Monitors the Date select box
+  observeEvent(input$dateSelect,ignoreNULL = TRUE,ignoreInit = TRUE,{
+    
+    if(input$dateSelect != ""){
+      selectedValues$selectedDate <- input$dateSelect
     }
     
-    output
   })
   
-  output$totalCrimeByRegionType <- renderText({
-    if(selectedValues$selectedCrime != ""){
+  #Renders the map
+  output$calgaryMap <- renderLeaflet({
+    calgaryMap
+  })
+  
+  output$totalCrimeByRegion <- renderText({
+    if(selectedValues$selectedCommunity != ""){
       value <- selectedValues$selectedCommunity
       
       output <-  CasesTotal[Community == value,TotalByCommunity]
@@ -58,7 +53,37 @@ shinyServer(function(input, output,session) {
     }
     
     output
-  }) 
+  })
+  
+  output$totalCrimeByRegionType <- renderText({
+    if(selectedValues$selectedCrime != ""){
+      value <- selectedValues$selectedCrime
+      
+      output <-  CatTotal[Category == value,TotalByCategory]
+      
+    }else{
+      output <- ""
+    }
+    
+    output
+  })
+  
+  output$casesByDate <- renderText({ 
+    if(selectedValues$selectedDate != "" && selectedValues$selectedCommunity != ""){
+      value <- as.Date(selectedValues$selectedDate)
+      
+      output <- CalgaryData[Community == selectedValues$selectedCommunity & Date == value & Category == selectedValues$selectedCrime,Cases]
+      
+    }else{
+      output <- ""
+    }
+    
+    output
+  })
+  
+  
+  
+  
   
   
 })

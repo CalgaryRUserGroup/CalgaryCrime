@@ -26,7 +26,7 @@ setBaseSate <- function(session = NULL) {
                       choices = crimeTypes,
                       selected = "")
     
-    updateDateInput(session,"dateSelect", min = min(CalgaryData$Date),max = max(CalgaryData$Date),value = min(CalgaryData$Date))
+    updateSelectInput(session,"dateSelect",choices = dateRange, selected = "")
   }
   
   

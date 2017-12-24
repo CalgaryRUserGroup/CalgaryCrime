@@ -8,29 +8,36 @@ shinyUI(tagList(useShinyjs(),
                            tabPanel("Calgary Map", id = "basePage",
                                     
                                     sidebarLayout(fluid = TRUE,
-                                      
-                                      sidebarPanel(id = "calgaryMapSidebar" ,width = 2,
-                                                   selectInput("communitySelect",  label = h4("Select Community"),choices = c(''),selected = ''),
-                                                   selectInput("crimeSelect", label = h4("Select Crime Type"),choices = c(''),selected = ''),
-                                                   dateInput("dateSelect",label = h4("Select Date"), value = NULL, min = NULL, max = NULL,
-                                                              format = "yyyy-mm-dd", startview = "month", weekstart = 0, language = "en"),
-                                                   
-                                                   
-                                                   h4("Total Crime In Community"),
-                                                   textOutput("totalCrimeByRegion"),
-                                                   
-                                                   h4("Total Crime Type"),
-                                                   textOutput("totalCrimeByRegionType")
                                                   
-                                                   ),
-                                      
-                                      
-                                      
-                                      mainPanel(id="calgaryMapMainPannel",
-                                                wellPanel(leafletOutput("calgaryMap"))
-                                                
-                                                )#End of Main Panel
-                                      
+                                                  sidebarPanel(id = "calgaryMapSidebar" ,width = 2,
+                                                               selectInput("communitySelect",  label = h4("Select Community"),choices = c(''),selected = ''),
+                                                               selectInput("crimeSelect", label = h4("Select Crime Type"),choices = c(''),selected = ''),
+                                                               selectInput("dateSelect", label = h4("Select Date"),choices = c(''),selected = ''),
+                                                               
+                                                               HTML('<hr style="display:block; margin-top:10px; margin-bottom:1px; border-top:2px solid #8c8b8b;">'),
+                                                               
+                                                               h4("Number of Cases in Area by Date"),
+                                                               textOutput("casesByDate"),
+                                                               
+                                                               HTML('<hr style="display:block; margin-top:10px; margin-bottom:1px; border-top:2px solid #8c8b8b;">'),
+                                                               
+                                                               h4("Total Crime In Community"),
+                                                               textOutput("totalCrimeByRegion"),
+                                                               
+                                                               HTML('<hr style="display:block; margin-top:10px; margin-bottom:1px; border-top:2px solid #8c8b8b;">'),
+                                                               
+                                                               h4("Total Crime Type Accross Calgary"),
+                                                               textOutput("totalCrimeByRegionType")
+                                                               
+                                                  ),
+                                                  
+                                                  
+                                                  
+                                                  mainPanel(id="calgaryMapMainPannel",
+                                                            wellPanel(leafletOutput("calgaryMap"))
+                                                            
+                                                  )#End of Main Panel
+                                                  
                                     )
                                     
                                     

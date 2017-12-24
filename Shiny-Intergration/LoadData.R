@@ -133,8 +133,10 @@ boundries <-
   readOGR(shapefiles[1],
           layer = 'geo_export_48183217-cea2-47fe-bb74-c513d0cfd1fe',
           GDAL1_integer64_policy = TRUE)
+
 community <- append(c(""), unique(CalgaryData$Community))
 crimeTypes <-  append(c("") , unique(CalgaryData$Category))
+dateRange <- append(c("") , unique(as.character(CalgaryData[,Date])))
 
 
 
@@ -143,4 +145,4 @@ crimeTypes <-  append(c("") , unique(CalgaryData$Category))
 remove(list = c("i", "j", "intialYear", "names", "tmpnames"))
 
 
-#sequence_com_list <- boundries@data[["name"]]
+
